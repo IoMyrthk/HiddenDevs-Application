@@ -193,6 +193,7 @@ AddCocoEvent.OnClientEvent:Connect(function(coco) -- coconut disappers = fires t
 	local guiParent = Instance.new("Part", FalledCocosFolder) -- creating a part in which parent will be BillboardGui
 	guiParent.Anchored = true
 	guiParent.CanCollide = false
+	guiParent.Transparency = 1
 	guiParent.Position = coco.Position
 	local cocoGuiClone = cocoGui:Clone() -- adding visuals which describes, that coconut being pick uped
 	cocoGuiClone.Parent = guiParent -- setting cocoGuiClone parent to the guiParent
