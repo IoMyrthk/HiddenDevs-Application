@@ -1,0 +1,275 @@
+task.wait(2) -- fixing bug
+--Variables
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local plr = game:GetService("Players").LocalPlayer
+local character = plr.Character or plr:LoadCharacter()
+local HRP = character:WaitForChild("HumanoidRootPart")
+local Humanoid = character:WaitForChild("Humanoid")
+local Events = ReplicatedStorage:WaitForChild("Events")
+local SellingEvent = Events:WaitForChild("Selling")
+local CuttingEvent = Events:WaitForChild("Cutting")
+local ShoppingEvent = Events:WaitForChild("Shoping")
+local BuyingEvent = Events:WaitForChild("Buying")
+local AddCocoEvent = Events:WaitForChild("AddCoco")
+local FalledCocosFolder = workspace:WaitForChild("FalledCocos")
+local Coco = ReplicatedStorage:WaitForChild("Coconut")
+local CrackedCoco = ReplicatedStorage:WaitForChild("CrackedCoco")
+local cocoGui = ReplicatedStorage:WaitForChild("BillboardGui")
+
+local SellPlace = workspace:WaitForChild("SellZone")
+local Seller = workspace:WaitForChild("Seller")
+local PositionPart = Seller:WaitForChild("Position")
+local ExitPositionPart = SellPlace:WaitForChild("Exit")
+local CocoPosition = Seller:WaitForChild("CocoPosition")
+
+local SellingGui = script.Parent:WaitForChild("SellingGui")
+local SellingExitButton = SellingGui:WaitForChild("ExitSelling")
+local HitPoints = SellingGui:WaitForChild("BackFrame")
+
+local ShoppingGui = script.Parent:WaitForChild("ShoppingGui")
+local ShopFrame = ShoppingGui:WaitForChild("ShopFrame")
+local ShoppingExitButton = ShopFrame:WaitForChild("ExitButton")
+
+local MainGui = script.Parent:WaitForChild("MainGui")
+local MainFrame = MainGui:WaitForChild("MainFrame")
+
+local StrengthShopFrame = ShopFrame:WaitForChild("Strength")
+local StrengthPrice = StrengthShopFrame:WaitForChild("Price")
+local StrengthButton = StrengthShopFrame:WaitForChild("Button")
+local StrengthAmount = StrengthShopFrame:WaitForChild("Amount")
+
+local CashMultiplierShopFrame = ShopFrame:WaitForChild("CashMultiplier")
+local CashMultiplierPrice = CashMultiplierShopFrame:WaitForChild("Price")
+local CashMultiplierButton = CashMultiplierShopFrame:WaitForChild("Button")
+local CashMultiplierAmount = CashMultiplierShopFrame:WaitForChild("Amount")
+
+local leaderstats = plr:WaitForChild("leaderstats")
+local coconuts = leaderstats:WaitForChild("Coconuts")
+local cash = leaderstats:WaitForChild("Cash")
+local bonuses = plr:WaitForChild("Bonuses")
+local strength = bonuses:WaitForChild("Strength")
+local cashMultiplier = bonuses:WaitForChild("CashMultiplier")
+local startingCocoDurability = 10
+local upgradesCost = 20
+local cocoDurability = startingCocoDurability
+local cocoClone = nil
+local workingSell = nil
+local workingShop = nil
+local strengthButtonClickable = true
+local cashMultiplierButtonClickable = true
+local clickdb = false
+local clickdbTime = .1
+local strengthCostMultiplier = strength.Value
+local cashMultiplierCostMultiplier = cashMultiplier.Value
+local startingWalkSpeed = Humanoid.WalkSpeed
+--update shop text when plr just joined
+StrengthPrice.Text = tostring(math.round(upgradesCost * strengthCostMultiplier)) -- display how much upgrade cost
+StrengthAmount.Text = "Current Amount: ".. tostring(math.round(strengthCostMultiplier * 10) / 10) -- display how much upgrades do plr have
+
+CashMultiplierPrice.Text = tostring(math.round(upgradesCost * cashMultiplierCostMultiplier)) -- display how much upgrade cost
+CashMultiplierAmount.Text = "Current Amount: ".. tostring(math.round(cashMultiplierCostMultiplier * 10) / 10) -- display how much upgrades do plr have
+
+function exitSellingGui()
+	workingSell = false -- "plr is selling" set to false because he exited SellingGui
+	SellingGui.Enabled = false -- turn off SellingGui
+	cocoClone:Destroy() -- deleting coconut, that spawning on a table
+	HRP.CFrame = ExitPositionPart.CFrame -- teleporting plr to the exitPart
+	Humanoid.WalkSpeed = startingWalkSpeed -- making plr "unparalyzed"
+	SellingEvent:FireServer(true, nil) -- make it so plr cannot enter SellingGui for the next 2 seconds after exiting
+end
+
+function exitShoppingGui()
+	ShoppingGui.Enabled = false -- turn off ShoppingGui
+end
+
+SellingEvent.OnClientEvent:Connect(function(startingWalkSpeedValue)
+	if coconuts.Value > 0 then -- if plr has coconuts then...
+		workingSell = true -- "plr can sell coconuts" set to true
+		cocoDurability = startingCocoDurability -- setting coconut durability to default
+		HitPoints.Number.Text = cocoDurability .."/".. startingCocoDurability -- setting hitpoints bar text to default
+		HitPoints.FrontFrame.Size = UDim2.new(cocoDurability / startingCocoDurability, 0, 1, 0) -- setting hitpoints bar size to default
+		startingWalkSpeed = startingWalkSpeedValue -- changing startingWalkSpeed variable to plr walkspeed
+		cocoClone = Coco:Clone() -- creating a coconut, that appears on a table
+		cocoClone.Parent = Seller -- setting coconut parent
+		cocoClone.Position = CocoPosition.Position -- setting position(on table)
+		SellingGui.Enabled = true -- turning on the gui
+		HRP.CFrame = PositionPart.CFrame -- teleporting plr "sit downing" at the table
+		Humanoid.WalkSpeed = 0 -- making plr "paralyzed" so that he is can move
+	end
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed) -- player presses key = connecting function
+	local function spawnCrackedCoco() -- cutting coconut in half
+		local crackedClone = CrackedCoco:Clone() -- cloning parts of coconuts from ReplicatedStorage
+		crackedClone.Parent = FalledCocosFolder
+		crackedClone:MoveTo(CocoPosition.Position) -- teleporting parts to place of coconuts(on table)
+		--more variables :p
+		local cocoBack = crackedClone:WaitForChild("CocoWithInsideBack")
+		local cocoFront = crackedClone:WaitForChild("CocoWithInsideFront")
+		local backCocoInside = cocoBack:WaitForChild("CocoInside")
+		local frontCocoInside = cocoFront:WaitForChild("CocoInside")
+		local backGui = cocoBack:WaitForChild("BillboardGui")
+		local frontGui = cocoFront:WaitForChild("BillboardGui")
+		local backNumber = backGui:WaitForChild("TextNumber")
+		local frontNumber = frontGui:WaitForChild("TextNumber")
+		backNumber.Text = "+"..tostring(math.round(cashMultiplier.Value * 10) / 10) -- text: how many cash do plr get from first part of coconut
+		frontNumber.Text = "+"..tostring(math.round(cashMultiplier.Value * 10) / 10) -- text: how many cash do plr get from second part of coconut
+		wait(3) -- waiting until coconut will sell
+		local backGuiParent = Instance.new("Part", cocoBack) -- creating part in which BillboardGui of first part will appear
+		backGuiParent.Transparency = 1 -- setting part transparency to 0
+		backGuiParent.Anchored = true --making part anchored
+		backGuiParent.CanCollide = false -- setting part cancollide to false
+		backGuiParent.Position = backCocoInside.Position -- setting part position to position of coconut part
+		local frontGuiParent = Instance.new("Part", cocoFront) -- creating part in which BillboardGui of second part will appear
+		frontGuiParent.Transparency = 1
+		frontGuiParent.Anchored = true
+		frontGuiParent.CanCollide = false
+		frontGuiParent.Position = frontCocoInside.Position
+		backGui.Parent = backGuiParent -- setting gui parent to backGuiParent
+		frontGui.Parent = frontGuiParent -- setting gui parent to frontGuiParent
+		for i, backChildren in pairs(cocoBack:GetChildren()) do -- deleting first part
+			if backChildren:IsA("MeshPart") then
+				backChildren:Destroy()
+			end
+		end
+		for i, frontChildren in pairs(cocoFront:GetChildren()) do -- deleting second part
+			if frontChildren:IsA("MeshPart") then
+				frontChildren:Destroy()
+			end
+		end
+		backGui.Enabled = true -- making gui visible
+		frontGui.Enabled = true -- and again...
+		SellingEvent:FireServer(false, true) -- adding cash on balance of player
+		wait(2)
+		crackedClone:Destroy() -- deleting model of coconut parts
+	end
+	local function spawnCoco() -- spawning coco on a table
+		cocoClone = Coco:Clone()
+		cocoClone.Parent = Seller
+		cocoClone.Position = CocoPosition.Position
+	end
+	if input.UserInputType == Enum.UserInputType.MouseButton1 and workingSell == true and clickdb == false then -- when plr clicking left button mouse and workingSell is true + clicking debounce is false
+		if cocoDurability > strength.Value then -- if plr not finished cutting coconut
+			cocoDurability -= strength.Value -- damaging coconut
+			HitPoints.FrontFrame.Size = UDim2.new(cocoDurability / startingCocoDurability, 0, 1, 0) -- changing hitpoints bar size for better effect
+			HitPoints.Number.Text = math.round(cocoDurability) .."/".. startingCocoDurability -- changing text on hitpoints bar to understand how many hitpoints coconut have
+			
+		elseif cocoDurability <= strength.Value and leaderstats.Coconuts.Value == 1 then -- when plr finished cutting last coconut
+			cocoDurability = 0 -- rounding durabilty to 0
+			HitPoints.FrontFrame.Size = UDim2.new(cocoDurability / startingCocoDurability, 0, 1, 0) -- changing hitpoints bar size for better effect
+			HitPoints.Number.Text = cocoDurability .."/".. startingCocoDurability -- changing text on hitpoints bar to understand how many hitpoints coconut have
+			SellingEvent:FireServer(false, false) -- take away coconut from plr
+			exitSellingGui() -- calling function in order to exit gui
+			spawn(spawnCrackedCoco) -- split coconut into two parts
+			workingSell = false -- "plr can sell coconuts" set to true
+		elseif cocoDurability <= strength.Value then -- when plr finished cutting NOT last coconut
+			cocoDurability = 0 -- rounding durabilty to 0
+			HitPoints.FrontFrame.Size = UDim2.new(cocoDurability / startingCocoDurability, 0, 1, 0) -- changing hitpoints bar size for better effect
+			HitPoints.Number.Text = cocoDurability .."/".. startingCocoDurability -- changing text on hitpoints bar to understand how many hitpoints coconut have
+			SellingEvent:FireServer(false, false) -- take away coconut from plr
+			cocoDurability = startingCocoDurability -- setting durability to default
+			HitPoints.FrontFrame.Size = UDim2.new(cocoDurability / startingCocoDurability, 0, 1, 0) -- setting hitpoints bar size to default
+			HitPoints.Number.Text = cocoDurability .."/".. startingCocoDurability -- setting hitpoints bar text to default
+			spawn(spawnCrackedCoco) -- split coconut into two parts
+			spawn(spawnCoco) -- spawn new coconut
+		elseif leaderstats.Coconuts.Value < 1 then --fixing a bug
+			exitSellingGui() -- calling function in order to exit gui
+		end
+		clickdb = true -- making that so plr have click debounce
+		wait(clickdbTime) -- waiting a bit
+		clickdb = false -- making plr have access to click again!
+	end
+end)
+
+ShoppingEvent.OnClientEvent:Connect(function() -- enabling shoppingGui when plr is entering shopZone
+	ShoppingGui.Enabled = true
+	ShoppingEvent:FireServer(true) -- debounce system in main script
+end)
+
+AddCocoEvent.OnClientEvent:Connect(function(coco) -- coconut disappers = fires this event
+	wait(2)
+	local guiParent = Instance.new("Part", FalledCocosFolder) -- creating a part in which parent will be BillboardGui
+	guiParent.Anchored = true
+	guiParent.CanCollide = false
+	guiParent.Position = coco.Position
+	local cocoGuiClone = cocoGui:Clone() -- adding visuals which describes, that coconut being pick uped
+	cocoGuiClone.Parent = guiParent -- setting cocoGuiClone parent to the guiParent
+	cocoGuiClone.Enabled = true -- making gui visible
+	AddCocoEvent:FireServer(coco, leaderstats) -- adding coconut to the balance of the plr
+	wait(2)
+	guiParent:Destroy() -- destroying guiParent
+end)
+
+function buyStrength()
+	if strengthButtonClickable == true then -- button can be anclickable because plr click it without enough cash on balance
+		if cash.Value >= upgradesCost * strengthCostMultiplier then -- if plr have enough cash...
+			BuyingEvent:FireServer(upgradesCost, cash, strength, strengthCostMultiplier, true) -- buying strength
+		else -- ...if dont...
+			StrengthButton.Text = "Not enough cash" -- changing text of the button to "Not enough cash"
+			strengthButtonClickable = false -- this making so plr can't buy upgrade for a short time
+			wait(2)
+			StrengthButton.Text = "Buy" -- changing text of the button to "Buy"
+			strengthButtonClickable = true -- this making so plr can buy upgrade
+		end
+	end
+end
+
+function buyCashMultiplier() -- same as Strength but with CashMultiplier
+	if cashMultiplierButtonClickable == true then
+		if cash.Value >= upgradesCost * cashMultiplierCostMultiplier then
+			BuyingEvent:FireServer(upgradesCost, cash, cashMultiplier, cashMultiplierCostMultiplier, false)
+		else
+			CashMultiplierButton.Text = "Not enough cash"
+			cashMultiplierButtonClickable = false
+			wait(2)
+			CashMultiplierButton.Text = "Buy"
+			cashMultiplierButtonClickable = true
+		end
+	end
+end
+
+BuyingEvent.OnClientEvent:Connect(function(isStrength) -- after buying something
+	if isStrength then
+		strengthCostMultiplier = strength.Value -- making upgrade more expensive
+		StrengthPrice.Text = tostring(math.round(upgradesCost * strengthCostMultiplier)) -- display how much upgrade cost
+		StrengthAmount.Text = "Current Amount: ".. tostring(math.round(strengthCostMultiplier * 10) / 10) -- rounding it to the "adequate" number(for example not for 1.90000000000013)
+	else -- same as Strength but with CashMultiplier
+		cashMultiplierCostMultiplier = cashMultiplier.Value
+		CashMultiplierPrice.Text = tostring(math.round(upgradesCost * cashMultiplierCostMultiplier))
+		CashMultiplierAmount.Text = "Current Amount: ".. tostring(math.round(cashMultiplierCostMultiplier * 10) / 10)
+	end
+end)
+
+--call functions by clicking left button on mouse
+SellingExitButton.MouseButton1Click:Connect(exitSellingGui)
+
+ShoppingExitButton.MouseButton1Click:Connect(exitShoppingGui)
+
+StrengthButton.MouseButton1Click:Connect(buyStrength)
+
+CashMultiplierButton.MouseButton1Click:Connect(buyCashMultiplier)
+
+function changeText(value) -- change text of the values on left side
+	local valueFrame = MainFrame:WaitForChild(value.Name)
+	local valueText = valueFrame:WaitForChild("Value")
+	valueText.Text = tostring(math.round(value.Value * 10) / 10) -- rounding it to the "adequate" number
+end
+
+function changeTextToCashMultiplier(cashMultiplier) -- change text of the cashMultiplier on the left side
+	local multiplierText = MainFrame:WaitForChild("CashMultiplier")
+	multiplierText.Text = "Cash Multiplier: ".. tostring(math.round(cashMultiplier.Value * 10) / 10) -- rounding it to the "adequate" number
+end
+
+changeText(strength) -- upgrade text when plr just enter the place
+strength:GetPropertyChangedSignal("Value"):Connect(function() changeText(strength) end) -- upgrade text everytime, when value changes
+
+changeText(cash)
+cash:GetPropertyChangedSignal("Value"):Connect(function() changeText(cash) end)
+
+changeText(coconuts)
+coconuts:GetPropertyChangedSignal("Value"):Connect(function() changeText(coconuts) end)
+
+changeTextToCashMultiplier(cashMultiplier)
+cashMultiplier:GetPropertyChangedSignal("Value"):Connect(function() changeTextToCashMultiplier(cashMultiplier) end)
